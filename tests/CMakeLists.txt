@@ -28,3 +28,6 @@ target_link_libraries(test_search_bipartite ${GTEST_LIBRARIES} pthread ${PROJECT
 
 add_executable(test_search_roargraph_on_disk test_search_roargraph_on_disk.cpp)
 target_link_libraries(test_search_roargraph_on_disk ${GTEST_LIBRARIES} pthread ${PROJECT_NAME} Boost::program_options)
+
+add_executable(test_search_roargraph_on_disk_use_sq test_search_roargraph_on_disk_use_sq.cpp)
+target_link_libraries(test_search_roargraph_on_disk_use_sq ${GTEST_LIBRARIES} pthread ${PROJECT_NAME} Boost::program_options)

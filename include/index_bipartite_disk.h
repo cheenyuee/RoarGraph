@@ -1,5 +1,6 @@
 #include <fcntl.h>
 #include "index_bipartite.h"
+#include "SQ/quant/quant.hpp"
 
 // define likely unlikely
 #define likely(x) __builtin_expect(!!(x), 1)
