@@ -152,7 +152,7 @@ class IndexBipartite : public Index {
     std::vector<std::vector<uint32_t>> learn_base_knn_;
     std::vector<std::vector<uint32_t>> base_learn_knn_;
 
-   private:
+   protected:
     const size_t total_pts_const_;
     size_t total_pts_;
     Distance *l2_distance_;
