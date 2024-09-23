@@ -62,6 +62,7 @@ namespace efanna2e
         // std::vector<char> buffer_; // 内部缓冲区
     };
 
+    template <typename Quantizer = glass::FP32Quantizer<glass::Metric::L2>>
     class IndexBipartiteOnDisk : public IndexBipartite
     {
     protected:
@@ -219,6 +220,100 @@ namespace efanna2e
                     {
                         visited_array[nbr] = visited_array_tag;
                         float distance = distance_->compare(data_bp_ + nbr * dimension_, query, (unsigned)dimension_);
+                        ++cmps;
+                        search_queue.insert({nbr, distance, false});
+                    }
+                }
+            }
+            visited_list_pool_->releaseVisitedList(vl);
+
+            if (unlikely(search_queue.size() < k))
+            {
+                std::stringstream ss;
+                ss << "not enough results: " << search_queue.size() << ", expected: " << k;
+                throw std::runtime_error(ss.str());
+            }
+
+            for (size_t i = 0; i < k; ++i)
+            {
+                indices[i] = search_queue[i].id;
+                res_dists[i] = search_queue[i].distance;
+            }
+            return std::make_pair(cmps, hops);
+        }
+
+        Quantizer quant;
+        
+        void TrainQuantizer()
+        {
+            std::cout << "***********************" << std::endl;
+            std::cout << "data num: " << nd_ << std::endl;
+            std::cout << "data dim: " << dimension_ << std::endl;
+            quant = Quantizer(dimension_);
+            quant.train(data_bp_, nd_);
+            std::cout << "***********************" << std::endl;
+        }
+
+        std::pair<uint32_t, uint32_t> SearchDiskIndexQuant(const float *query, size_t k, size_t &qid, const Parameters &parameters, unsigned *indices, std::vector<float> &res_dists, int thread_no)
+        {
+            assert(query != nullptr);
+            auto computer = quant.get_computer(query);
+
+            uint32_t L_pq = parameters.Get<uint32_t>("L_pq");
+            NeighborPriorityQueue search_queue(L_pq);
+
+            auto &disk_reader = disk_readers[thread_no];
+            auto &buffer = disk_index_node_buffers_[thread_no];
+            uint32_t *disk_node_nbr_size = (uint32_t *)buffer;
+            uint32_t *disk_node_nbrs = (uint32_t *)((char *)buffer + 4);
+            assert(buffer != nullptr);
+
+            std::vector<uint32_t> init_ids;
+            init_ids.push_back(projection_ep_);
+
+            VisitedList *vl = visited_list_pool_->getFreeVisitedList();
+            vl_type *visited_array = vl->mass;
+            vl_type visited_array_tag = vl->curV;
+
+            // std::cout << "################" << std::endl;
+            // std::cout << "disk_index_head_size_" << disk_index_head_size_ << std::endl;
+            // std::cout << "disk_index_node_block_size_" << disk_index_node_block_size_ << std::endl;
+            // std::cout << "aligned_disk_index_node_block_size_" << aligned_disk_index_node_block_size_ << std::endl;
+            for (auto &id : init_ids)
+            {
+                // std::cout << "######" << std::endl;
+                // std::cout << id << std::endl;
+                // std::cout << disk_index_head_size_ + id * disk_index_node_block_size_ << std::endl;
+                // float distance = distance_->compare(data_bp_ + id * dimension_, query, (unsigned)dimension_);
+                float distance = computer(id); // quant
+                Neighbor nn = Neighbor(id, distance, false);
+                search_queue.insert(nn);
+            }
+            uint32_t cmps = 0;
+            uint32_t hops = 0;
+            while (search_queue.has_unexpanded_node())
+            {
+                auto cur_check_node = search_queue.closest_unexpanded();
+                auto cur_id = cur_check_node.id;
+
+                disk_reader.read(disk_index_head_size_ + (size_t)cur_id * disk_index_node_block_size_, aligned_disk_index_node_block_size_, (char *)buffer);
+                uint32_t *cur_nbrs = disk_node_nbrs;
+                ++hops;
+
+                // std::cout << projection_graph_[cur_id].size() << std::endl;
+                // std::cout << *disk_node_nbr_size << std::endl;
+
+                for (size_t j = 0; j < *disk_node_nbr_size; ++j)
+                {
+                    // current check node's neighbors
+                    uint32_t nbr = *(cur_nbrs + j);
+                    // _mm_prefetch((char *)(visited_array + *(cur_nbrs + j + 1)), _MM_HINT_T0);
+                    // _mm_prefetch((char *)(disk_nbr_vec_data + (j + 1) * dimension_), _MM_HINT_T0);
+                    if (visited_array[nbr] != visited_array_tag)
+                    {
+                        visited_array[nbr] = visited_array_tag;
+                        // float distance = distance_->compare(data_bp_ + nbr * dimension_, query, (unsigned)dimension_);
+                        float distance = computer(nbr);
                         ++cmps;
                         search_queue.insert({nbr, distance, false});
                     }

@@ -161,7 +161,12 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    efanna2e::IndexBipartiteOnDisk index(q_dim, base_num + sq_num, dist_metric, nullptr);
+    if (dist_metric != efanna2e::L2)
+    {
+        throw std::runtime_error("please modify Quantizer or Metric in IndexBipartiteOnDisk.");
+    }
+    // 这里写死了，需要手动选择 Quantizer 和 Metric
+    efanna2e::IndexBipartiteOnDisk<glass::FP32Quantizer<glass::Metric::L2>> index(q_dim, base_num + sq_num, dist_metric, nullptr);
 
     index.LoadSearchNeededData(base_data_file.c_str(), sampled_query_data_file.c_str());
 
@@ -176,6 +181,8 @@ int main(int argc, char **argv) {
         std::cout << "Disk index path is empty, will not save disk index" << std::endl;
         return -1;
     }
+    std::cout << "train quantizer..." << std::endl;
+    index.TrainQuantizer();
     std::cout << "generate disk index: " << disk_index_save_file << std::endl;
     index.GenerateDiskIndex(disk_index_save_file.c_str());
     std::cout << "Prepare for disk search: " << disk_index_save_file << std::endl;
@@ -216,7 +223,7 @@ int main(int argc, char **argv) {
 #pragma omp parallel for schedule(dynamic, 1)
         for (size_t i = 0; i < q_pts; ++i) {
             auto thread_no = omp_get_thread_num();
-            auto ret_val = index.SearchDiskIndex(aligned_query_data + i * q_dim, k, i, parameters, res + i * k, res_dists[i], thread_no);
+            auto ret_val = index.SearchDiskIndexQuant(aligned_query_data + i * q_dim, k, i, parameters, res + i * k, res_dists[i], thread_no);
             projection_cmps_vec[i] = ret_val.first;
             hops_vec[i] = ret_val.second;
 
