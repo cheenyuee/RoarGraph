@@ -161,12 +161,25 @@ int main(int argc, char **argv) {
         return -1;
     }
 
+    /***** 这里写死了，需要手动选择 Quantizer 和 Metric *****/
+    // glass 支持 FP32Quantizer 和 SQ8Quantizer
+    // 以下用 FP32Quantizer 举例，也可以使用 SQ8Quantizer
+
+    // 如果 dist_metric 使用 efanna2e::L2，则 glass 选择L2度量
     if (dist_metric != efanna2e::L2)
-    {
         throw std::runtime_error("please modify Quantizer or Metric in IndexBipartiteOnDisk.");
-    }
-    // 这里写死了，需要手动选择 Quantizer 和 Metric
     efanna2e::IndexBipartiteOnDisk<glass::FP32Quantizer<glass::Metric::L2>> index(q_dim, base_num + sq_num, dist_metric, nullptr);
+
+    // 如果 dist_metric 使用 efanna2e::INNER_PRODUCT，则 glass 选择IP度量
+    // if (dist_metric != efanna2e::INNER_PRODUCT)
+    //     throw std::runtime_error("please modify Quantizer or Metric in IndexBipartiteOnDisk.");
+    // efanna2e::IndexBipartiteOnDisk<glass::FP32Quantizer<glass::Metric::IP>> index(q_dim, base_num + sq_num, dist_metric, nullptr);
+
+    // 如果 dist_metric 使用 efanna2e::COSINE，则 glass 选择IP度量
+    // if (dist_metric != efanna2e::COSINE)
+    //     throw std::runtime_error("please modify Quantizer or Metric in IndexBipartiteOnDisk.");
+    // efanna2e::IndexBipartiteOnDisk<glass::FP32Quantizer<glass::Metric::IP>> index(q_dim, base_num + sq_num, dist_metric, nullptr);
+    /********************************************************/
 
     index.LoadSearchNeededData(base_data_file.c_str(), sampled_query_data_file.c_str());
 

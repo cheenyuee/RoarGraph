@@ -46,7 +46,7 @@ namespace glass {
                 dif[j] = mx[j] = mi[j] = 0; // 将由于对齐增加的维度的最大差值设为 0
             }
             codes = (char *) alloc2M((size_t) n * code_size);
-            for (int i = 0; i < n; ++i) {
+            for (int64_t i = 0; i < n; ++i) {
                 encode(data + i * d, get_data(i));
             }
         }

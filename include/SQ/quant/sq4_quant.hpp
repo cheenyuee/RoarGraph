@@ -40,7 +40,7 @@ namespace glass {
             }
             dif = mx - mi;
             codes = (data_type *) alloc2M(n * code_size);
-            for (int i = 0; i < n; ++i) {
+            for (int64_t i = 0; i < n; ++i) {
                 encode(data + i * d, get_data(i));
             }
             reorderer.train(data, n);
